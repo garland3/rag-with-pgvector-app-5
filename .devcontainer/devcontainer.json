@@ -1,5 +1,5 @@
 {
-  "name": "App with pgvector",
+  "name": "RAG with pgvector",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -7,12 +7,46 @@
       "version": "18"
     }
   },
-  "forwardPorts": [5432],
-  "postCreateCommand": "docker compose up -d postgres && ./setup.sh",
+  "forwardPorts": [8000, 5432],
+  "postCreateCommand": "./scripts/devcontainer-setup.sh",
   "postAttachCommand": "python main.py &",
   "customizations": {
     "vscode": {
-      "extensions": ["ms-python.python"]
+      "extensions": [
+        // Python Development
+        "ms-python.python",
+        "ms-python.black-formatter", 
+        "charliermarsh.ruff",
+        
+        // PostgreSQL & Database
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "ms-ossdata.vscode-postgresql",
+        
+        // API Development  
+        "ms-vscode.vscode-json",
+        "humao.rest-client",
+        
+        // Git & Collaboration
+        "eamodio.gitlens",
+        "github.copilot"
+      ],
+      
+      "settings": {
+        "sqltools.connections": [
+          {
+            "name": "Local PostgreSQL",
+            "driver": "PostgreSQL",
+            "server": "localhost",
+            "port": 5432,
+            "database": "your_app_db", 
+            "username": "postgres",
+            "password": "password"
+          }
+        ],
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.formatting.provider": "black"
+      }
     }
   }
 }
