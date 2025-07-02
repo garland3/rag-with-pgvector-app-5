@@ -10,6 +10,10 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     auth0_id: str
 
+class UserUpdate(UserBase):
+    pass
+
+
 class User(UserBase):
     id: uuid.UUID
     created_at: datetime

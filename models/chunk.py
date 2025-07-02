@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 import uuid
-from database import Base
+from database_base import Base
 
 
 class Chunk(Base):
