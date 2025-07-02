@@ -2,10 +2,14 @@
   "name": "App with pgvector",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    }
   },
   "forwardPorts": [5432],
-  "postCreateCommand": "docker compose up -d postgres",
+  "postCreateCommand": "docker compose up -d postgres && ./setup.sh",
+  "postAttachCommand": "python main.py &",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python"]

@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_debug: bool = True
     
+    # Database URL
+    database_url: str = "postgresql://postgres:password@localhost:5432/your_app_db"
+    
+    # Gemini API Key
+    gemini_api_key: str = ""
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
