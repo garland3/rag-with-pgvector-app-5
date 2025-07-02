@@ -1,39 +1,29 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
-from models.chunk import Chunk as ChunkModel
+from crud.chat_manager import get_chat_response
+from crud.project_manager import get_project
+from database import get_db
+from models.user import User
 from schemas import ChatMessage, ChatResponse
-from database import SessionLocal
-from rag.processing import get_embeddings
-from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
+import uuid
 
-router = APIRouter()
+router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(message: ChatMessage, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    query_embedding = get_embeddings([message.text])[0]
-    
-    results = db.query(ChunkModel).order_by(ChunkModel.embedding.l2_distance(query_embedding)).limit(5).all()
-    
-    context = ""
-    for result in results:
-        context += result.content + "\n\n"
-        
-    chat = ChatOpenAI(openai_api_key=settings.gemini_api_key)
-    
-    messages = [
-        SystemMessage(content="You are a helpful assistant that answers questions based on the provided context."),
-        HumanMessage(content=f"Context:\n{context}\n\nQuestion: {message.text}\n\nAnswer:")
-    ]
-    
-    response = chat(messages)
-    
-    return {"response": response.content}
+@router.post("/", response_model=ChatResponse)
+async def chat(
+    project_id: uuid.UUID,
+    message: ChatMessage,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Chat with a project.
+    """
+    project = get_project(db, project_id)
+    if not project or project.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    response = get_chat_response(db=db, project_id=project_id, query=message.text)
+    return {"response": response}
