@@ -7,7 +7,7 @@ DATABASE_URL = "postgresql://postgres:password@localhost:5432/your_app_db"
 def check_db_connection():
     try:
         engine = sqlalchemy.create_engine(DATABASE_URL)
-        with engine.connect() as connection:
+        with engine.connect():
             print("Database connection successful!")
             return True
     except OperationalError as e:

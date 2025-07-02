@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from crud.search_manager import search_chunks
 from rag.processing import get_completion
 from rag.reranking import hybrid_search_and_rerank
-from typing import Dict, List
+from typing import Dict
 import uuid
 
 

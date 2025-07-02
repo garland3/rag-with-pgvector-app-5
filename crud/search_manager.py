@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from models.chunk import Chunk
-from models.document import Document
 from rag.processing import get_embeddings
 import uuid
 

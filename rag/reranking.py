@@ -1,7 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage, SystemMessage
 from config import settings
-from typing import List, Tuple
+from typing import List
 import json
 
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from routes import auth_router, api_router, user_router, project_router, document_router, search_router, chat_router
@@ -6,10 +6,7 @@ from auth import get_current_user_optional
 from config import settings
 from database import Base, engine, SessionLocal
 # Import models to register them with Base
-from models.user import User
 from models.project import Project  
-from models.document import Document
-from models.chunk import Chunk
 from utils.logging import setup_logging, get_logger, log_api_request, log_error
 import time
 

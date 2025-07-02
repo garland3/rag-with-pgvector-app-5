@@ -47,7 +47,7 @@ async def upload_document(
         if not success:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Failed to process file. Supported formats: PDF, DOCX, TXT, MD"
+                detail="Failed to process file. Supported formats: PDF, DOCX, TXT, MD"
             )
         
         if not text.strip():

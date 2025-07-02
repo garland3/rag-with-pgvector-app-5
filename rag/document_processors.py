@@ -29,7 +29,7 @@ def detect_file_type(content: bytes, filename: str) -> str:
                 return "txt"
             else:
                 return "unknown"
-    except:
+    except Exception:
         # Fallback to filename extension if magic fails
         if filename.lower().endswith('.pdf'):
             return "pdf"
@@ -94,7 +94,7 @@ def extract_text_from_txt(content: bytes) -> Tuple[str, bool]:
             try:
                 text = content.decode(encoding)
                 return text, True
-            except:
+            except Exception:
                 continue
         return "", False
 

@@ -1,0 +1,6 @@
+# Exclude generated migrations from linting
+exclude = ["migrations/"]
+
+[lint]
+# Allow imports not at top of file in migration scripts
+ignore = ["E402"]

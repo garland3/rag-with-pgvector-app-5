@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from auth.oauth_client import oauth_client
