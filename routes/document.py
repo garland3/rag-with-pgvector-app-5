@@ -1,35 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
-from models.document import Document as DocumentModel
-from models.project import Project as ProjectModel
+from crud.document_manager import (
+    create_document as create_document_crud,
+    get_documents_by_project,
+)
+from crud.project_manager import get_project
+from database import get_db
+from models.user import User
 from models.chunk import Chunk as ChunkModel
-from schemas import Document
-from database import SessionLocal
+from schemas import Document, DocumentCreate
 from rag.processing import get_text_chunks, get_embeddings
 import uuid
+from typing import List
 
-router = APIRouter()
+router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documents"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
-@router.post("/projects/{project_id}/documents", response_model=Document)
-async def upload_document(project_id: uuid.UUID, file: UploadFile = File(...), current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
-    if not project:
+@router.post("/", response_model=Document)
+async def upload_document(
+    project_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload a document to a project.
+    """
+    project = get_project(db, project_id)
+    if not project or project.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     content = await file.read()
-    
-    db_document = DocumentModel(name=file.filename, content=content, project_id=project_id)
-    db.add(db_document)
-    db.commit()
-    db.refresh(db_document)
+    document_create = DocumentCreate(name=file.filename)
+    db_document = create_document_crud(
+        db=db, document=document_create, project_id=project_id, content=content
+    )
 
     # For now, only handle text files
     if file.filename.endswith(".txt"):
@@ -41,9 +47,24 @@ async def upload_document(project_id: uuid.UUID, file: UploadFile = File(...), c
             chunk = ChunkModel(
                 document_id=db_document.id,
                 content=chunk_content,
-                embedding=embeddings[i]
+                embedding=embeddings[i],
             )
             db.add(chunk)
         db.commit()
 
     return db_document
+
+
+@router.get("/", response_model=List[Document])
+def get_documents(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all documents for a project.
+    """
+    project = get_project(db, project_id)
+    if not project or project.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return get_documents_by_project(db=db, project_id=project_id)
