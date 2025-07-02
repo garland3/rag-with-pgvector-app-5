@@ -1,0 +1,184 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: "3.11"
+  POSTGRES_VERSION: "16"
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client libmagic1
+    
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Wait for PostgreSQL
+      run: |
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+    
+    - name: Setup test database
+      run: |
+        chmod +x scripts/setup-test-db.sh
+        scripts/setup-test-db.sh
+      env:
+        PGPASSWORD: password
+    
+    - name: Run linting
+      run: |
+        pip install ruff black
+        ruff check .
+        black --check .
+    
+    - name: Run tests
+      run: |
+        pytest --tb=short --maxfail=5 -v
+      env:
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/test_app_db
+        TESTING: "true"
+        OAUTH_CLIENT_ID: "test-client-id"
+        OAUTH_CLIENT_SECRET: "test-client-secret"
+        OAUTH_DOMAIN: "test.auth0.com"
+        JWT_SECRET_KEY: "test-secret-key"
+        GEMINI_API_KEY: "test-gemini-key"
+    
+    - name: Generate coverage report
+      if: success()
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=html
+      env:
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/test_app_db
+        TESTING: "true"
+        OAUTH_CLIENT_ID: "test-client-id"
+        OAUTH_CLIENT_SECRET: "test-client-secret"
+        OAUTH_DOMAIN: "test.auth0.com"
+        JWT_SECRET_KEY: "test-secret-key"
+        GEMINI_API_KEY: "test-gemini-key"
+    
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          htmlcov/
+          pytest-report.html
+        retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install safety bandit
+    
+    - name: Run safety check
+      run: |
+        pip install -r requirements.txt
+        safety check
+    
+    - name: Run bandit security scan
+      run: |
+        bandit -r . -x tests/ -f json -o bandit-report.json || true
+        bandit -r . -x tests/
+    
+    - name: Upload security results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-results
+        path: bandit-report.json
+        retention-days: 30
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Validate application starts
+      run: |
+        timeout 30s uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 10
+        curl -f http://localhost:8000/health || exit 1
+        curl -f http://localhost:8000/docs || exit 1
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        OAUTH_CLIENT_ID: "test-client-id"
+        OAUTH_CLIENT_SECRET: "test-client-secret"
+        OAUTH_DOMAIN: "test.auth0.com"
+        JWT_SECRET_KEY: "test-secret-key"
+        GEMINI_API_KEY: "test-gemini-key"

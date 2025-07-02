@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Form
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
 from crud.project_manager import create_project as create_project_crud, get_projects_by_owner
@@ -20,6 +21,21 @@ def create_project(
     Create a new project.
     """
     return create_project_crud(db=db, project=project, owner_id=current_user.id)
+
+
+@router.post("/create")
+def create_project_form(
+    name: str = Form(...),
+    description: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Create a new project from HTML form submission.
+    """
+    project_data = ProjectCreate(name=name, description=description)
+    create_project_crud(db=db, project=project_data, owner_id=current_user.id)
+    return RedirectResponse(url="/", status_code=302)
 
 
 @router.get("/", response_model=List[Project])

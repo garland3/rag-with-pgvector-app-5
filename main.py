@@ -182,7 +182,7 @@ async def get_rag_home_page(current_user: dict = None, projects: list = []):
 
             <div class="create-project-form">
                 <h3>Create a New Project</h3>
-                <form action="/projects" method="post">
+                <form action="/projects/create" method="post">
                     <input type="text" name="name" placeholder="Project Name" required>
                     <input type="text" name="description" placeholder="Project Description" required>
                     <button type="submit" class="btn btn-primary">Create Project</button>
