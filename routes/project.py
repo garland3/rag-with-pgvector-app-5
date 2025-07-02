@@ -1,36 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
-from models.project import Project as ProjectModel
-from models.user import User as UserModel
+from crud.project_manager import create_project as create_project_crud, get_projects_by_owner
+from database import get_db
+from models.user import User
 from schemas import Project, ProjectCreate
-from database import SessionLocal
-import uuid
+from typing import List
 
-router = APIRouter()
+router = APIRouter(prefix="/projects", tags=["projects"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
-@router.post("/projects", response_model=Project)
-def create_project(project: ProjectCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(UserModel).filter(UserModel.auth0_id == current_user["user_id"]).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    db_project = ProjectModel(**project.dict(), owner_id=user.id)
-    db.add(db_project)
-    db.commit()
-    db.refresh(db_project)
-    return db_project
+@router.post("/", response_model=Project)
+def create_project(
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Create a new project.
+    """
+    return create_project_crud(db=db, project=project, owner_id=current_user.id)
 
-@router.get("/projects/{project_id}", response_model=Project)
-def read_project(project_id: uuid.UUID, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+
+@router.get("/", response_model=List[Project])
+def get_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all projects for the current user.
+    """
+    return get_projects_by_owner(db=db, owner_id=current_user.id)
