@@ -1,5 +1,5 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage, SystemMessage
 from config import settings
 
@@ -9,11 +9,11 @@ def get_text_chunks(text):
     return chunks
 
 def get_embeddings(texts):
-    embeddings = OpenAIEmbeddings(openai_api_key=settings.gemini_api_key)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=settings.gemini_api_key)
     return embeddings.embed_documents(texts)
 
 def get_completion(query, context):
-    chat = ChatOpenAI(openai_api_key=settings.gemini_api_key)
+    chat = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=settings.gemini_api_key)
     
     messages = [
         SystemMessage(content="You are a helpful assistant that answers questions based on the provided context."),

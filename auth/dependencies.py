@@ -1,23 +1,31 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from auth.token_manager import token_manager
 from crud.user_manager import get_user_by_auth0_id
 from database import get_db
 from models.user import User
 
-security = HTTPBearer()
-
-
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> User:
     """
     Dependency to get the current authenticated user from the database.
     """
-    token = credentials.credentials
+    # Try to get token from cookie first, then from Authorization header
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No authentication token provided",
+        )
+
     payload = token_manager.verify_token(token)
     auth0_id = payload.get("sub")
 
@@ -38,18 +46,23 @@ def get_current_user(
 
 
 def get_current_user_optional(
+    request: Request,
     db: Session = Depends(get_db),
-    request: Request = None,
 ) -> Optional[User]:
     """
     Optional dependency to get the current user if authenticated.
     Returns None if not authenticated.
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    # Try to get token from cookie first, then from Authorization header
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    
+    if not token:
         return None
 
-    token = auth_header.split(" ")[1]
     try:
         payload = token_manager.verify_token(token)
         auth0_id = payload.get("sub")

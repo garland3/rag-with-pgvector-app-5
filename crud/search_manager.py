@@ -1,21 +1,43 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from models.chunk import Chunk
+from models.document import Document
 from rag.processing import get_embeddings
-import numpy as np
+import uuid
 
 
-def search_chunks(db: Session, project_id: str, query: str, top_k: int = 10):
+def search_chunks(db: Session, project_id: uuid.UUID, query: str, top_k: int = 10):
+    """
+    Search for chunks using native pgvector similarity search.
+    """
     query_embedding = get_embeddings([query])[0]
     
-    # This is a placeholder for a more efficient search
-    chunks = db.query(Chunk).join(Chunk.document).filter(Chunk.document.has(project_id=project_id)).all()
+    # Use native pgvector similarity search with cosine distance
+    sql_query = text("""
+        SELECT c.id, c.document_id, c.content, c.embedding,
+               c.embedding <=> :query_embedding AS distance
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE d.project_id = :project_id
+        ORDER BY distance ASC
+        LIMIT :top_k
+    """)
     
-    if not chunks:
-        return []
-        
-    embeddings = np.array([chunk.embedding for chunk in chunks])
-    similarities = np.dot(embeddings, query_embedding)
+    result = db.execute(sql_query, {
+        'query_embedding': str(query_embedding),
+        'project_id': str(project_id), 
+        'top_k': top_k
+    })
     
-    top_k_indices = np.argsort(similarities)[-top_k:][::-1]
+    chunks = []
+    for row in result:
+        chunk = Chunk(
+            id=row.id,
+            document_id=row.document_id,
+            content=row.content,
+            embedding=row.embedding
+        )
+        chunk.distance = row.distance
+        chunks.append(chunk)
     
-    return [chunks[i] for i in top_k_indices]
+    return chunks

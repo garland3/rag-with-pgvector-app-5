@@ -1,11 +1,24 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from routes import auth_router, api_router, user_router, project_router, document_router, search_router, chat_router
 from auth import get_current_user_optional
 from config import settings
 from database import Base, engine, SessionLocal
-from models import User, Project
+# Import models to register them with Base
+from models.user import User
+from models.project import Project  
+from models.document import Document
+from models.chunk import Chunk
+from utils.logging import setup_logging, get_logger, log_api_request, log_error
+import time
+
+# Set up logging
+setup_logging(
+    log_level="INFO",
+    log_file="logs/app.log"
+)
+logger = get_logger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -16,6 +29,40 @@ app = FastAPI(
     description="A multi-tenant RAG application with project-based access control.",
     version="1.0.0"
 )
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Log successful requests
+        log_api_request(
+            logger,
+            method=request.method,
+            endpoint=str(request.url.path),
+            duration=process_time
+        )
+        
+        # Add timing header
+        response.headers["X-Process-Time"] = str(process_time)
+        return response
+        
+    except Exception as e:
+        process_time = time.time() - start_time
+        
+        # Log errors
+        log_error(logger, e, {
+            "method": request.method,
+            "endpoint": str(request.url.path),
+            "duration": process_time
+        })
+        
+        # Re-raise the exception
+        raise
 
 # Add CORS middleware
 app.add_middleware(
@@ -37,19 +84,70 @@ app.include_router(chat_router)
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root(current_user: dict = Depends(get_current_user_optional)):
+async def root(current_user = Depends(get_current_user_optional)):
     """
     Home page with a modern UI for the RAG application.
     """
     db = SessionLocal()
     projects = []
     if current_user:
-        user = db.query(User).filter(User.auth0_id == current_user["user_id"]).first()
-        if user:
-            projects = db.query(Project).filter(Project.owner_id == user.id).all()
+        projects = db.query(Project).filter(Project.owner_id == current_user.id).all()
     db.close()
     
     return await get_rag_home_page(current_user, projects)
+
+
+@app.get("/login")
+async def login_redirect():
+    """
+    Redirect /login to /auth/login for convenience.
+    """
+    return RedirectResponse(url="/auth/login", status_code=302)
+
+
+@app.get("/logout")
+async def logout_redirect():
+    """
+    Redirect /logout to home page (simple logout for now).
+    """
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint to verify system configuration.
+    """
+    from config import settings
+    
+    config_status = {
+        "oauth_configured": bool(settings.oauth_client_id and settings.oauth_client_secret and settings.oauth_domain),
+        "jwt_configured": bool(settings.jwt_secret_key),
+        "gemini_configured": bool(settings.gemini_api_key),
+        "database_configured": bool(settings.database_url),
+    }
+    
+    # Test database connection
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        config_status["database_connected"] = True
+    except Exception as e:
+        config_status["database_connected"] = False
+        config_status["database_error"] = str(e)
+    
+    all_configured = all([
+        config_status["oauth_configured"],
+        config_status["jwt_configured"], 
+        config_status["gemini_configured"],
+        config_status["database_connected"]
+    ])
+    
+    return {
+        "status": "healthy" if all_configured else "configuration_needed",
+        "config": config_status
+    }
 
 
 async def get_rag_home_page(current_user: dict = None, projects: list = []):
@@ -67,10 +165,10 @@ async def get_rag_home_page(current_user: dict = None, projects: list = []):
         user_section = f"""
         <div class="dashboard">
             <div class="user-info">
-                <img src="{current_user.get('picture', '')}" alt="User" class="avatar">
+                <img src="{current_user.picture or ''}" alt="User" class="avatar">
                 <div>
-                    <h2>Welcome, {current_user.get('name', 'User')}!</h2>
-                    <p>{current_user.get('email', '')}</p>
+                    <h2>Welcome, {current_user.name or 'User'}!</h2>
+                    <p>{current_user.email or ''}</p>
                 </div>
                 <a href="/logout" class="btn btn-danger">Logout</a>
             </div>

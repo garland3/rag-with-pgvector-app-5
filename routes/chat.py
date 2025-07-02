@@ -25,5 +25,5 @@ async def chat(
     if not project or project.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    response = get_chat_response(db=db, project_id=project_id, query=message.text)
-    return {"response": response}
+    response_data = get_chat_response(db=db, project_id=project_id, query=message.text)
+    return response_data

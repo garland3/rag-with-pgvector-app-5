@@ -64,5 +64,13 @@ class SearchResult(BaseModel):
 class ChatMessage(BaseModel):
     text: str
 
+class ChatSource(BaseModel):
+    id: int
+    document_name: str
+    document_id: str
+    chunk_content: str
+    relevance_score: float
+
 class ChatResponse(BaseModel):
     response: str
+    sources: list[ChatSource] = []

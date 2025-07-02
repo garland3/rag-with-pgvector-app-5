@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Request, HTTPException, status, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from auth.oauth_client import oauth_client
 from auth.token_manager import token_manager
 from crud.user_manager import get_user_by_auth0_id, create_user, update_user
 from database import get_db
-from schemas import UserCreate, UserUpdate
+from schemas import User, UserCreate, UserUpdate
+from auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -19,13 +20,22 @@ async def login():
     Initiates the OAuth 2.0 login flow by generating an authorization URL.
     """
     try:
+        # Check if OAuth is properly configured
+        if not oauth_client.client_id or not oauth_client.client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="OAuth client not properly configured. Please check OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET environment variables.",
+            )
+        
         auth_url, state = oauth_client.get_authorization_url()
         _states[state] = True  # Store state to prevent CSRF
-        return {"auth_url": auth_url}
+        return RedirectResponse(url=auth_url)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate login URL: {e}",
+            detail=f"Failed to generate login URL: {str(e)}",
         )
 
 
@@ -87,20 +97,28 @@ async def auth_callback(
             data={"sub": auth0_id}
         )
 
-        # Return a simple success page with the token
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <body>
-                    <h1>Login Successful</h1>
-                    <p>Your access token is: <code>{access_token}</code></p>
-                </body>
-            </html>
-            """
+        # Set the token in a cookie and redirect to the main page
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=1800  # 30 minutes
         )
+        return response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Authentication failed: {e}",
         )
+
+
+@router.get("/me", response_model=User)
+def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """
+    Get current user information.
+    """
+    return current_user
 
