@@ -155,7 +155,7 @@ async def get_rag_home_page(current_user: dict = None, projects: list = []):
         project_list_items = ""
         if projects:
             for project in projects:
-                project_list_items += f"<li class='project-item'><strong>{project.name}</strong>: {project.description}</li>"
+                project_list_items += f"<li class='project-item'><a href='/projects/{project.id}/dashboard' class='project-link'><strong>{project.name}</strong>: {project.description}</a></li>"
         else:
             project_list_items = "<p>No projects found. Create one below!</p>"
 
@@ -268,6 +268,18 @@ async def get_rag_home_page(current_user: dict = None, projects: list = []):
             .project-item {{
                 padding: 10px;
                 border-bottom: 1px solid #eeeeee;
+            }}
+            .project-link {{
+                color: #007bff;
+                text-decoration: none;
+                display: block;
+                padding: 5px;
+                border-radius: 4px;
+                transition: background-color 0.2s;
+            }}
+            .project-link:hover {{
+                background-color: #f8f9fa;
+                text-decoration: none;
             }}
             .create-project-form input[type="text"] {{
                 width: 100%;
