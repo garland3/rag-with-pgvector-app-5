@@ -23,7 +23,7 @@ def test_auth_login_oauth_not_configured(client):
 def test_auth_login_oauth_configured(client, mock_oauth_settings):
     """Test login endpoint when OAuth is properly configured."""
     with patch("routes.auth.oauth_client") as mock_client, \
-         patch("routes.auth._states", {}) as mock_states:
+         patch("routes.auth._states", {}):
         
         mock_client.client_id = "test-client-id"
         mock_client.client_secret = "test-client-secret"
