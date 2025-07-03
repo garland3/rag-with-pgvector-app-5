@@ -95,7 +95,7 @@ def extract_text_from_txt(content: bytes) -> Tuple[str, bool]:
                 text = content.decode(encoding)
                 return text, True
             except Exception:
-                continue
+                continue  # nosec
         return "", False
 
 

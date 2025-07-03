@@ -113,8 +113,8 @@ def mock_oauth_settings():
     """Mock OAuth settings for testing."""
     with patch("config.settings") as mock_settings:
         mock_settings.oauth_client_id = "test-client-id"
-        mock_settings.oauth_client_secret = "test-client-secret"
+        mock_settings.oauth_client_secret = "test-client-secret"  # nosec B105
         mock_settings.oauth_domain = "test.auth0.com"
-        mock_settings.jwt_secret_key = "test-secret-key"
+        mock_settings.jwt_secret_key = "test-secret-key"  # nosec B105
         mock_settings.gemini_api_key = "test-gemini-key"
         yield mock_settings

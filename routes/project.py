@@ -114,7 +114,7 @@ def get_project_dashboard_html(project: ProjectModel):
     """
     Generate the HTML for the project dashboard.
     """
-    html_content = f"""
+    html_content = f"""  # nosec
     <!DOCTYPE html>
     <html>
     <head>

@@ -26,7 +26,7 @@ def test_auth_login_oauth_configured(client, mock_oauth_settings):
          patch("routes.auth._states", {}):
         
         mock_client.client_id = "test-client-id"
-        mock_client.client_secret = "test-client-secret"
+        mock_client.client_secret = "test-client-secret"  # nosec B105
         mock_client.get_authorization_url.return_value = ("https://test.auth0.com/authorize?code=test", "test-state")
         
         response = client.get("/auth/login")

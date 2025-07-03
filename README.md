@@ -246,6 +246,37 @@ The test suite uses pytest markers to categorize tests:
 - `auth` - Authentication tests
 - `slow` - Longer running tests
 
+## Security Scanning
+
+The project includes security scanning with Bandit to identify potential security issues.
+
+### Running Security Scans
+
+```bash
+# Install bandit
+pip install bandit
+
+# Run security scan (uses .bandit configuration)
+bandit -c .bandit -r .
+
+# Generate JSON report
+bandit -c .bandit -r . -f json -o bandit-report.json
+
+# Scan specific directories
+bandit -c .bandit -r ./routes ./crud ./rag
+```
+
+### Configuration
+
+Security scanning is configured via `.bandit` file which:
+- Skips B101 (assert_used) for test files where assertions are expected
+- Skips B608 (hardcoded_sql_expressions) for HTML template generation false positives
+- Uses `# nosec` comments for legitimate test credentials and exception handling
+
+### CI/CD Integration
+
+Security scanning runs automatically in the CI/CD pipeline as part of the `security` job alongside safety checks for dependency vulnerabilities.
+
 ## Development
 
 The application uses:
