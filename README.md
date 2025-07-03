@@ -186,6 +186,66 @@ Start the PostgreSQL database:
 docker-compose up -d
 ```
 
+## Testing
+
+The application includes a comprehensive test suite located in the `tests/` directory.
+
+### Running Tests
+
+#### Using the Test Script (Recommended)
+
+```bash
+# Run all tests
+./scripts/run-tests.sh
+
+# Run specific test categories
+./scripts/run-tests.sh unit        # Unit tests only
+./scripts/run-tests.sh api         # API tests only  
+./scripts/run-tests.sh auth        # Authentication tests only
+./scripts/run-tests.sh coverage    # Tests with coverage report
+./scripts/run-tests.sh ci          # CI-friendly test run
+```
+
+#### Using pytest directly
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html --cov-report=term-missing
+
+# Run specific test markers
+pytest -m "unit"           # Unit tests
+pytest -m "api"            # API tests
+pytest -m "auth"           # Authentication tests
+pytest -m "integration"    # Integration tests
+```
+
+### Test Structure
+
+- `tests/test_auth.py` - Authentication tests
+- `tests/test_chat.py` - Chat functionality tests
+- `tests/test_document_management.py` - Document management tests
+- `tests/test_ingestion_pipeline.py` - Document ingestion tests
+- `tests/test_project_dashboard.py` - Dashboard tests
+- `tests/test_projects.py` - Project management tests
+- `tests/conftest.py` - Test configuration and fixtures
+- `tests/test_docs/` - Sample documents for testing
+
+### Test Categories
+
+The test suite uses pytest markers to categorize tests:
+
+- `unit` - Fast unit tests
+- `integration` - Integration tests
+- `api` - API endpoint tests
+- `auth` - Authentication tests
+- `slow` - Longer running tests
+
 ## Development
 
 The application uses:
