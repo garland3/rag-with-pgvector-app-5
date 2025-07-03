@@ -72,6 +72,7 @@ jobs:
     
     - name: Run tests
       run: |
+        export PYTHONPATH=.
         pytest --tb=short --maxfail=5 -v
       env:
         DATABASE_URL: postgresql://postgres:password@localhost:5432/test_app_db
