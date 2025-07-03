@@ -9,6 +9,8 @@ authlib==1.2.1
 itsdangerous==2.1.2
 SQLAlchemy==2.0.23
 psycopg2-binary==2.9.9
+pgvector==0.2.4
+alembic==1.13.1
 PyPDF2==3.0.1
 python-docx==1.1.0
 python-magic==0.4.27
