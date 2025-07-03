@@ -72,8 +72,7 @@ def test_get_projects_authenticated_with_projects(client, auth_headers, authenti
         name="Test Project",
         description="Test Description",
         owner_id=authenticated_user.id,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.utcnow()
     )
     db_session.add(project)
     db_session.commit()

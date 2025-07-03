@@ -91,8 +91,7 @@ def authenticated_user(db_session, mock_user_data):
         email=mock_user_data["email"],
         name=mock_user_data["name"],
         picture=mock_user_data["picture"],
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.utcnow()
     )
     db_session.add(user)
     db_session.commit()
