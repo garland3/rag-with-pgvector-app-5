@@ -8,7 +8,6 @@ from crud.document_manager import (
 from crud.project_manager import get_project
 from crud.ingestion_manager import (
     create_ingestion_job,
-    get_ingestion_job,
     update_job_status,
     increment_job_progress,
     add_file_error
@@ -377,16 +376,6 @@ async def process_single_document_async(
 
     # Store chunks with metadata
     for i, chunk_content in enumerate(chunks):
-        chunk_metadata = {
-            "file_name": filename,
-            "file_type": file_type,
-            "file_size": file_size,
-            "chunk_index": i,
-            "total_chunks": len(chunks),
-            "job_id": job_id,
-            "processed_at": time.time()
-        }
-        
         chunk = ChunkModel(
             document_id=db_document.id,
             content=chunk_content,

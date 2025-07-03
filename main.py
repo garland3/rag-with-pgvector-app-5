@@ -7,7 +7,6 @@ from config import settings
 from database import Base, engine, SessionLocal
 # Import models to register them with Base
 from models.project import Project
-from models.ingestion_job import IngestionJob  
 from utils.logging import setup_logging, get_logger, log_api_request, log_error
 import time
 

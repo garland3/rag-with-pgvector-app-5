@@ -3,7 +3,6 @@ Test document management functionality including deletion and chunk viewing.
 """
 import pytest
 from uuid import uuid4
-from unittest.mock import patch
 
 
 @pytest.fixture
@@ -174,7 +173,6 @@ def test_delete_document_success(client, auth_headers, sample_document_with_chun
 def test_delete_document_without_chunks(client, auth_headers, sample_project, db_session):
     """Test deleting document that has no chunks."""
     from models.document import Document
-    from models.chunk import Chunk
     from datetime import datetime
     
     # Create document without chunks

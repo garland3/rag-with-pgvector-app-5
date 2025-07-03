@@ -275,14 +275,14 @@ def main():
         print("📊 TEST SUMMARY")
         print("=" * 60)
         
-        print(f"\n📄 Document Processing Results:")
+        print("\n📄 Document Processing Results:")
         for filename, result in processing_results.items():
             status = "✅ SUCCESS" if result.get("success") else "❌ FAILED"
             print(f"   {status} {filename}")
             if result.get("success"):
                 print(f"      - {result['text_length']} chars, {result['chunk_count']} chunks")
         
-        print(f"\n🔄 Pipeline Results:")
+        print("\n🔄 Pipeline Results:")
         if pipeline_results:
             for doc in pipeline_results:
                 print(f"   ✅ {doc['filename']}")
@@ -299,7 +299,7 @@ def main():
     
     finally:
         # Final cleanup
-        print(f"\n🧹 Final cleanup...")
+        print("\n🧹 Final cleanup...")
         cleanup_all_test_data()
     
     # Final result

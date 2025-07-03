@@ -5,9 +5,8 @@ Script to run ingestion pipeline tests with proper setup and cleanup.
 
 import os
 import sys
-import subprocess
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from database import SessionLocal
 from models.user import User
 from models.project import Project
@@ -51,7 +50,7 @@ def cleanup_test_data():
         
         db.commit()
         
-        print(f"✅ Cleanup complete:")
+        print("✅ Cleanup complete:")
         print(f"   - {chunks_deleted} chunks")
         print(f"   - {jobs_deleted} ingestion jobs") 
         print(f"   - {documents_deleted} documents")

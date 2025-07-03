@@ -3,10 +3,7 @@ import tempfile
 import os
 import shutil
 from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-from main import app
-from database import SessionLocal, get_db
+from database import SessionLocal
 from models.user import User
 from models.project import Project
 from models.document import Document
@@ -20,7 +17,6 @@ from crud.ingestion_manager import (
 )
 from rag.processing import get_text_chunks, get_embeddings, get_completion
 from rag.document_processors import process_document
-import time
 
 
 @pytest.fixture
@@ -506,7 +502,7 @@ class TestCleanup:
     def test_cleanup_ingestion_data(self, db_session, test_project, test_user):
         """Test cleaning up test data after ingestion tests."""
         # Create some test data
-        job = create_ingestion_job(
+        create_ingestion_job(
             db=db_session,
             project_id=str(test_project.id),
             user_id=str(test_user.id),

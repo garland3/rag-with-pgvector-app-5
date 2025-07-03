@@ -67,7 +67,7 @@ class TestUploadedDocuments:
         assert file_type == "pdf", f"Expected file_type 'pdf', got '{file_type}'"
         assert len(text) > 100, f"Extracted text too short: {len(text)} characters"
         
-        print(f"✅ AI_history.pdf processed successfully")
+        print("✅ AI_history.pdf processed successfully")
         print(f"   - Extracted {len(text)} characters")
         print(f"   - First 200 chars: {text[:200]}...")
         
@@ -91,7 +91,7 @@ class TestUploadedDocuments:
         assert file_type == "docx", f"Expected file_type 'docx', got '{file_type}'"
         assert len(text) > 100, f"Extracted text too short: {len(text)} characters"
         
-        print(f"✅ Turtles of New Mexico.docx processed successfully")
+        print("✅ Turtles of New Mexico.docx processed successfully")
         print(f"   - Extracted {len(text)} characters")
         print(f"   - First 200 chars: {text[:200]}...")
         
@@ -164,7 +164,7 @@ class TestUploadedDocuments:
             
             assert len(chunks) > 0, "No chunks created for document"
             
-            print(f"✅ Full pipeline test for AI_history.pdf completed")
+            print("✅ Full pipeline test for AI_history.pdf completed")
             print(f"   - Document ID: {document.id}")
             print(f"   - Number of chunks: {len(chunks)}")
             print(f"   - OpenAI API calls: {mock_post.call_count}")
@@ -237,7 +237,7 @@ class TestUploadedDocuments:
             
             assert len(chunks) > 0, "No chunks created for document"
             
-            print(f"✅ Full pipeline test for Turtles of New Mexico.docx completed")
+            print("✅ Full pipeline test for Turtles of New Mexico.docx completed")
             print(f"   - Document ID: {document.id}")
             print(f"   - Number of chunks: {len(chunks)}")
             print(f"   - OpenAI API calls: {mock_post.call_count}")

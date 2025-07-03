@@ -5,8 +5,6 @@ Simple pipeline test with better error handling and cleanup.
 
 import os
 import sys
-import asyncio
-import tempfile
 from unittest.mock import patch, MagicMock
 
 # Add the project root to Python path
@@ -95,7 +93,7 @@ def test_document_processing():
                 print(f"❌ Failed to extract text from {filename}")
                 continue
             
-            print(f"✅ Text extraction successful")
+            print("✅ Text extraction successful")
             print(f"   📝 Extracted text: {len(text)} characters")
             print(f"   🗂️  File type: {file_type}")
             
@@ -155,7 +153,7 @@ def test_embedding_mock(mock_post):
         
         embeddings = get_embeddings(test_texts)
         
-        print(f"✅ Embedding generation successful")
+        print("✅ Embedding generation successful")
         print(f"   📊 Generated {len(embeddings)} embeddings")
         print(f"   📏 Embedding dimensions: {len(embeddings[0])}")
         print(f"   🔧 API calls made: {mock_post.call_count}")
@@ -218,7 +216,7 @@ def test_database_operations():
         assert job.total_files == 2
         assert job.processed_files == 0
         assert job.status == "pending"
-        print(f"✅ Job data verified")
+        print("✅ Job data verified")
         
         return user, project, job
         
@@ -251,7 +249,7 @@ def main():
             print(f"✅ Document processing: {successful_processing}/{len(processing_results)} files successful")
             success_count += 1
         else:
-            print(f"❌ Document processing: All files failed")
+            print("❌ Document processing: All files failed")
         
         # Test 2: Embedding generation (mocked)
         print("\n" + "="*20 + " TEST 2: Embedding Generation " + "="*20)
@@ -283,7 +281,7 @@ def main():
     
     finally:
         # Final cleanup
-        print(f"\n🧹 Final cleanup...")
+        print("\n🧹 Final cleanup...")
         simple_cleanup()
     
     # Summary
@@ -294,7 +292,7 @@ def main():
     print(f"\n✅ Tests passed: {success_count}/{total_tests}")
     
     if processing_results:
-        print(f"\n📄 Document Processing Details:")
+        print("\n📄 Document Processing Details:")
         for result in processing_results:
             status = "✅" if result.get("success") else "❌"
             print(f"   {status} {result['filename']}")
@@ -302,12 +300,12 @@ def main():
                 print(f"      {result['text_length']} chars → {result['chunk_count']} chunks")
     
     if success_count == total_tests:
-        print(f"\n🎉 ALL TESTS PASSED! The ingestion pipeline is ready to use.")
-        print(f"📋 Your documents are supported:")
-        print(f"   - AI_history.pdf: PDF processing working")
-        print(f"   - Turtles of New Mexico.docx: DOCX processing working")
-        print(f"   - OpenAI API integration: Ready (with proper API key)")
-        print(f"   - Database operations: Working")
+        print("\n🎉 ALL TESTS PASSED! The ingestion pipeline is ready to use.")
+        print("📋 Your documents are supported:")
+        print("   - AI_history.pdf: PDF processing working")
+        print("   - Turtles of New Mexico.docx: DOCX processing working")
+        print("   - OpenAI API integration: Ready (with proper API key)")
+        print("   - Database operations: Working")
         return True
     else:
         print(f"\n⚠️  {total_tests - success_count} tests failed. Check the issues above.")
