@@ -709,20 +709,51 @@ def get_project_dashboard_html(project: ProjectModel):
                 
                 input.value = '';
                 
-                fetch(`/chat/query/${{projectId}}`, {{
+                // Show typing indicator
+                const typingIndicator = `<div id="typingIndicator" style="margin-bottom: 10px; color: #6c757d; font-style: italic;">Assistant is typing...</div>`;
+                messagesDiv.innerHTML += typingIndicator;
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                
+                fetch(`/projects/${{projectId}}/chat/`, {{
                     method: 'POST',
                     headers: {{
                         'Content-Type': 'application/json',
                     }},
-                    body: JSON.stringify({{ query: message }})
+                    body: JSON.stringify({{ text: message }})
                 }})
-                .then(response => response.json())
+                .then(response => {{
+                    if (!response.ok) {{
+                        throw new Error(`HTTP error! status: ${{response.status}}`);
+                    }}
+                    return response.json();
+                }})
                 .then(data => {{
-                    messagesDiv.innerHTML += `<div style="margin-bottom: 10px; padding: 10px; background: #f0f8ff; border-radius: 4px;"><strong>Assistant:</strong> ${{data.response}}</div>`;
+                    // Remove typing indicator
+                    const typingDiv = document.getElementById('typingIndicator');
+                    if (typingDiv) typingDiv.remove();
+                    
+                    // Add response
+                    let responseHtml = `<div style="margin-bottom: 10px; padding: 10px; background: #f0f8ff; border-radius: 4px;"><strong>Assistant:</strong> ${{data.response}}`;
+                    
+                    // Add sources if available
+                    if (data.sources && data.sources.length > 0) {{
+                        responseHtml += `<br><small style="color: #6c757d; margin-top: 5px; display: block;"><strong>Sources:</strong></small>`;
+                        data.sources.forEach((source, index) => {{
+                            responseHtml += `<small style="color: #6c757d; display: block;">• ${{source.document_name}} (Score: ${{source.relevance_score.toFixed(2)}})</small>`;
+                        }});
+                    }}
+                    
+                    responseHtml += `</div>`;
+                    messagesDiv.innerHTML += responseHtml;
                     messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 }})
                 .catch(error => {{
-                    messagesDiv.innerHTML += `<div style="margin-bottom: 10px; color: red;"><strong>Error:</strong> ${{error}}</div>`;
+                    // Remove typing indicator
+                    const typingDiv = document.getElementById('typingIndicator');
+                    if (typingDiv) typingDiv.remove();
+                    
+                    messagesDiv.innerHTML += `<div style="margin-bottom: 10px; color: red; padding: 10px; background: #ffe6e6; border-radius: 4px;"><strong>Error:</strong> ${{error.message}}</div>`;
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 }});
             }}
             

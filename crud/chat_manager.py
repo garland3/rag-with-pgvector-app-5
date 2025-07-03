@@ -31,7 +31,8 @@ def get_chat_response(db: Session, project_id: uuid.UUID, query: str, use_rerank
         context_parts.append(f"[Source {i+1}]: {chunk.content}")
         
         # Get document name for source attribution
-        document = db.query(chunk.document).first() if hasattr(chunk, 'document') else None
+        from models.document import Document
+        document = db.query(Document).filter(Document.id == chunk.document_id).first()
         document_name = document.name if document else f"Document {chunk.document_id}"
         
         # Determine relevance score based on available information
