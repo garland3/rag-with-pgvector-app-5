@@ -15,8 +15,9 @@ from crud.ingestion_manager import (
 )
 from database import get_db
 from models.user import User
+from models.document import Document
 from models.chunk import Chunk as ChunkModel
-from schemas import Document, DocumentCreate
+from schemas import Document as DocumentSchema, DocumentCreate
 from rag.processing import get_text_chunks, get_embeddings
 from rag.document_processors import process_document
 from utils.logging import get_logger, log_document_upload, log_error
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documents"]
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=Document)
+@router.post("/", response_model=DocumentSchema)
 async def upload_document(
     project_id: uuid.UUID,
     file: UploadFile = File(...),
@@ -110,7 +111,7 @@ async def upload_document(
         raise HTTPException(status_code=500, detail="Internal server error during document processing")
 
 
-@router.get("/", response_model=List[Document])
+@router.get("/", response_model=List[DocumentSchema])
 def get_documents(
     project_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -123,6 +124,59 @@ def get_documents(
     if not project or project.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Project not found")
     return get_documents_by_project(db=db, project_id=project_id)
+
+
+@router.delete("/{document_id}")
+def delete_document(
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete a document and all its associated chunks.
+    """
+    try:
+        # Verify project exists and user has access
+        project = get_project(db, project_id)
+        if not project or project.owner_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Get the document to verify it exists and belongs to the project
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.project_id == project_id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Delete all chunks associated with this document
+        chunks_deleted = db.query(ChunkModel).filter(
+            ChunkModel.document_id == document_id
+        ).delete()
+
+        # Delete the document
+        db.delete(document)
+        db.commit()
+
+        logger.info(f"Deleted document {document_id} and {chunks_deleted} chunks for project {project_id}")
+
+        return {
+            "message": "Document deleted successfully",
+            "document_id": str(document_id),
+            "chunks_deleted": chunks_deleted
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, e, {
+            "document_id": str(document_id),
+            "project_id": str(project_id),
+            "user_id": str(current_user.id)
+        })
+        raise HTTPException(status_code=500, detail="Failed to delete document")
 
 
 @router.post("/upload", status_code=202)

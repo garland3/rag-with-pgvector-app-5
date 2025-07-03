@@ -71,6 +71,45 @@ def get_project_dashboard(
     return get_project_dashboard_html(project)
 
 
+@router.get("/{project_id}/documents/{document_id}/chunks", response_class=HTMLResponse)
+def get_document_chunks(
+    project_id: str,
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the chunks view for a specific document.
+    """
+    from models.document import Document
+    from models.chunk import Chunk as ChunkModel
+    
+    # Check if project exists and belongs to current user
+    project = db.query(ProjectModel).filter(
+        ProjectModel.id == project_id,
+        ProjectModel.owner_id == current_user.id
+    ).first()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get document
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.project_id == project_id
+    ).first()
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Get chunks
+    chunks = db.query(ChunkModel).filter(
+        ChunkModel.document_id == document_id
+    ).all()
+    
+    return get_document_chunks_html(project, document, chunks)
+
+
 def get_project_dashboard_html(project: ProjectModel):
     """
     Generate the HTML for the project dashboard.
@@ -140,11 +179,13 @@ def get_project_dashboard_html(project: ProjectModel):
             .btn-secondary:hover {{
                 background-color: #545b62;
             }}
+            .chat-section {{
+                margin-bottom: 30px;
+            }}
             .dashboard-grid {{
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 30px;
-                margin-top: 30px;
             }}
             .card {{
                 background: #f8f9fa;
@@ -298,6 +339,82 @@ def get_project_dashboard_html(project: ProjectModel):
                 border-radius: 4px;
                 margin-right: 10px;
             }}
+            .document-list {{
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background: white;
+            }}
+            .document-item {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 15px;
+                border-bottom: 1px solid #f0f0f0;
+                transition: background-color 0.2s;
+            }}
+            .document-item:hover {{
+                background-color: #f8f9fa;
+            }}
+            .document-item:last-child {{
+                border-bottom: none;
+            }}
+            .document-info {{
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                cursor: pointer;
+            }}
+            .document-info:hover .document-name {{
+                color: #007bff;
+                text-decoration: underline;
+            }}
+            .document-name {{
+                font-weight: 500;
+                color: #2c3e50;
+                margin-bottom: 4px;
+            }}
+            .document-meta {{
+                font-size: 12px;
+                color: #6c757d;
+            }}
+            .document-actions {{
+                display: flex;
+                gap: 8px;
+            }}
+            .btn-delete {{
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 4px 8px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }}
+            .btn-delete:hover {{
+                background-color: #c82333;
+            }}
+            .btn-refresh {{
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 6px 12px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                margin-bottom: 15px;
+            }}
+            .btn-refresh:hover {{
+                background-color: #138496;
+            }}
+            .no-documents {{
+                text-align: center;
+                padding: 40px 20px;
+                color: #6c757d;
+            }}
             @media (max-width: 768px) {{
                 .dashboard-grid {{
                     grid-template-columns: 1fr;
@@ -317,6 +434,27 @@ def get_project_dashboard_html(project: ProjectModel):
                 </div>
             </div>
             
+            <!-- Chat Section - Full Width -->
+            <div class="chat-section">
+                <div class="card">
+                    <h2>💬 Chat with Documents</h2>
+                    <p>Ask questions about your uploaded documents</p>
+                    
+                    <div class="chat-area">
+                        <div class="chat-messages" id="chatMessages">
+                            <p style="text-align: center; color: #6c757d; margin-top: 50px;">
+                                Upload some documents to start chatting!
+                            </p>
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Ask a question about your documents...">
+                            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload and Library Section - Two Columns -->
             <div class="dashboard-grid">
                 <div class="card">
                     <h2>📁 Document Upload</h2>
@@ -345,18 +483,15 @@ def get_project_dashboard_html(project: ProjectModel):
                 </div>
                 
                 <div class="card">
-                    <h2>💬 Chat with Documents</h2>
-                    <p>Ask questions about your uploaded documents</p>
+                    <h2>📚 Document Library</h2>
+                    <p>Manage your uploaded documents</p>
                     
-                    <div class="chat-area">
-                        <div class="chat-messages" id="chatMessages">
-                            <p style="text-align: center; color: #6c757d; margin-top: 50px;">
-                                Upload some documents to start chatting!
-                            </p>
-                        </div>
-                        <div class="chat-input">
-                            <input type="text" id="chatInput" placeholder="Ask a question about your documents...">
-                            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                    <button class="btn-refresh" onclick="loadDocuments()">🔄 Refresh</button>
+                    
+                    <div id="documentLibrary" class="document-list">
+                        <div class="no-documents">
+                            <p>📂 No documents uploaded yet</p>
+                            <p>Upload some documents to get started!</p>
                         </div>
                     </div>
                 </div>
@@ -494,6 +629,7 @@ def get_project_dashboard_html(project: ProjectModel):
                             
                             setTimeout(() => {{
                                 hideProgressUI();
+                                refreshDocumentsAfterUpload();
                             }}, 3000);
                             
                         }} else if (status.status === 'failed') {{
@@ -602,8 +738,332 @@ def get_project_dashboard_html(project: ProjectModel):
                     sendMessage();
                 }}
             }});
+            
+            // Document management functions
+            async function loadDocuments() {{
+                try {{
+                    const response = await fetch(`/projects/${{projectId}}/documents/`);
+                    const documents = await response.json();
+                    
+                    displayDocuments(documents);
+                }} catch (error) {{
+                    showToast('Error loading documents: ' + error.message, 'error');
+                }}
+            }}
+            
+            function displayDocuments(documents) {{
+                const library = document.getElementById('documentLibrary');
+                
+                if (!documents || documents.length === 0) {{
+                    library.innerHTML = `
+                        <div class="no-documents">
+                            <p>📂 No documents uploaded yet</p>
+                            <p>Upload some documents to get started!</p>
+                        </div>
+                    `;
+                    return;
+                }}
+                
+                library.innerHTML = documents.map(doc => {{
+                    const uploadDate = new Date(doc.created_at).toLocaleDateString();
+                    
+                    return `
+                        <div class="document-item" data-doc-id="${{doc.id}}">
+                            <div class="document-info" onclick="viewDocumentChunks('${{doc.id}}')">
+                                <div class="document-name">${{doc.name}}</div>
+                                <div class="document-meta">
+                                    📅 ${{uploadDate}}
+                                </div>
+                            </div>
+                            <div class="document-actions">
+                                <button class="btn-delete" onclick="deleteDocument('${{doc.id}}', '${{doc.name}}')">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }}).join('');
+            }}
+            
+            async function deleteDocument(documentId, documentName) {{
+                if (!confirm(`Are you sure you want to delete "${{documentName}}"?\\n\\nThis will also delete all associated chunks and cannot be undone.`)) {{
+                    return;
+                }}
+                
+                try {{
+                    const response = await fetch(`/projects/${{projectId}}/documents/${{documentId}}`, {{
+                        method: 'DELETE'
+                    }});
+                    
+                    if (response.ok) {{
+                        showToast(`Document "${{documentName}}" deleted successfully`, 'success');
+                        
+                        // Remove from UI immediately
+                        const documentElement = document.querySelector(`[data-doc-id="${{documentId}}"]`);
+                        if (documentElement) {{
+                            documentElement.remove();
+                        }}
+                        
+                        // Reload documents to ensure consistency
+                        setTimeout(() => {{
+                            loadDocuments();
+                        }}, 1000);
+                        
+                    }} else {{
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Failed to delete document');
+                    }}
+                }} catch (error) {{
+                    showToast('Error deleting document: ' + error.message, 'error');
+                }}
+            }}
+            
+            // Load documents when page loads
+            document.addEventListener('DOMContentLoaded', function() {{
+                loadDocuments();
+            }});
+            
+            // Refresh documents after successful upload
+            function refreshDocumentsAfterUpload() {{
+                setTimeout(() => {{
+                    loadDocuments();
+                }}, 2000);
+            }}
+            
+            // Navigate to document chunks view
+            function viewDocumentChunks(documentId) {{
+                window.location.href = `/projects/${{projectId}}/documents/${{documentId}}/chunks`;
+            }}
         </script>
     </body>
     </html>
     """
     return html_content
+
+
+def get_document_chunks_html(project: ProjectModel, document, chunks):
+    """
+    Generate the HTML for the document chunks view.
+    """
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{document.name} - Chunks</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                background-color: #f0f2f5;
+                margin: 0;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 30px;
+            }}
+            .header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #e9ecef;
+            }}
+            .document-info h1 {{
+                color: #2c3e50;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            .document-info p {{
+                color: #6c757d;
+                margin: 5px 0 0 0;
+            }}
+            .nav-buttons {{
+                display: flex;
+                gap: 10px;
+            }}
+            .btn {{
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                font-size: 16px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+                transition: background-color 0.2s;
+            }}
+            .btn-primary {{
+                background-color: #007bff;
+                color: white;
+            }}
+            .btn-primary:hover {{
+                background-color: #0056b3;
+            }}
+            .btn-secondary {{
+                background-color: #6c757d;
+                color: white;
+            }}
+            .btn-secondary:hover {{
+                background-color: #545b62;
+            }}
+            .chunks-container {{
+                display: grid;
+                gap: 20px;
+            }}
+            .chunk-item {{
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+                border-left: 4px solid #007bff;
+                position: relative;
+            }}
+            .chunk-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }}
+            .chunk-number {{
+                font-weight: bold;
+                color: #007bff;
+                font-size: 14px;
+            }}
+            .chunk-meta {{
+                color: #6c757d;
+                font-size: 12px;
+            }}
+            .chunk-content {{
+                line-height: 1.6;
+                color: #2c3e50;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }}
+            .chunk-stats {{
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #e9ecef;
+                color: #6c757d;
+                font-size: 12px;
+            }}
+            .no-chunks {{
+                text-align: center;
+                padding: 60px 20px;
+                color: #6c757d;
+            }}
+            .summary-card {{
+                background: #e3f2fd;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 30px;
+                border-left: 4px solid #2196f3;
+            }}
+            .summary-stats {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 20px;
+                margin-top: 15px;
+            }}
+            .stat-item {{
+                text-align: center;
+            }}
+            .stat-value {{
+                font-size: 24px;
+                font-weight: bold;
+                color: #2196f3;
+            }}
+            .stat-label {{
+                font-size: 12px;
+                color: #6c757d;
+                margin-top: 5px;
+            }}
+            @media (max-width: 768px) {{
+                .header {{
+                    flex-direction: column;
+                    gap: 15px;
+                }}
+                .summary-stats {{
+                    grid-template-columns: 1fr 1fr;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="document-info">
+                    <h1>
+                        <span>📄</span>
+                        {document.name}
+                    </h1>
+                    <p>Document chunks for {project.name}</p>
+                </div>
+                <div class="nav-buttons">
+                    <a href="/projects/{project.id}/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <h3>📊 Document Summary</h3>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{len(chunks)}</div>
+                        <div class="stat-label">Total Chunks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{sum(len(chunk.content) for chunk in chunks):,}</div>
+                        <div class="stat-label">Total Characters</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{int(sum(len(chunk.content) for chunk in chunks) / len(chunks)) if chunks else 0}</div>
+                        <div class="stat-label">Avg Chunk Size</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{len(chunks[0].embedding) if chunks and chunks[0].embedding is not None else 0}</div>
+                        <div class="stat-label">Embedding Dims</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chunks-container">
+                {get_chunks_html(chunks) if chunks else '<div class="no-chunks"><p>📄 No chunks found for this document</p></div>'}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html_content
+
+
+def get_chunks_html(chunks):
+    """
+    Generate HTML for individual chunks.
+    """
+    chunks_html = ""
+    for i, chunk in enumerate(chunks, 1):
+        word_count = len(chunk.content.split())
+        char_count = len(chunk.content)
+        
+        chunks_html += f"""
+        <div class="chunk-item">
+            <div class="chunk-header">
+                <span class="chunk-number">Chunk #{i}</span>
+                <span class="chunk-meta">
+                    {word_count} words • {char_count} characters
+                </span>
+            </div>
+            <div class="chunk-content">{chunk.content}</div>
+            <div class="chunk-stats">
+                <strong>Embedding:</strong> {len(chunk.embedding) if chunk.embedding is not None else 0} dimensions
+                {"• <strong>Vector ID:</strong> " + str(chunk.id) if chunk.id else ""}
+            </div>
+        </div>
+        """
+    
+    return chunks_html

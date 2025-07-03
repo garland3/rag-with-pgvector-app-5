@@ -94,7 +94,6 @@ jobs:
         OAUTH_CLIENT_SECRET: "test-client-secret"
         OAUTH_DOMAIN: "test.auth0.com"
         JWT_SECRET_KEY: "test-secret-key"
-        GEMINI_API_KEY: "test-gemini-key"
     
     - name: Upload coverage to Codecov
       if: success()
@@ -181,4 +180,3 @@ jobs:
         OAUTH_CLIENT_SECRET: "test-client-secret"
         OAUTH_DOMAIN: "test.auth0.com"
         JWT_SECRET_KEY: "test-secret-key"
-        GEMINI_API_KEY: "test-gemini-key"
