@@ -1,5 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage, SystemMessage
+import requests
 from config import settings
 from typing import List
 import json
@@ -16,7 +15,9 @@ def llm_rerank_chunks(query: str, chunks: List, top_k: int = 10) -> List:
     if len(chunks) <= top_k:
         return chunks
     
-    chat = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=settings.gemini_api_key)
+    if not settings.openai_api_key:
+        # Fallback: return original order if API not configured
+        return chunks[:top_k]
     
     # Prepare chunks for evaluation
     chunk_texts = []
@@ -46,15 +47,45 @@ Chunks to evaluate:
 Please score each chunk's relevance to the query and return only the JSON array of scores."""
     
     try:
+        headers = {
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json"
+        }
+        
         messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt)
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": human_prompt
+            }
         ]
         
-        response = chat(messages)
+        data = {
+            "model": settings.chat_model,
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 500
+        }
+        
+        response = requests.post(
+            f"{settings.openai_base_url}/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            # Fallback: return original order if API call fails
+            return chunks[:top_k]
+        
+        result = response.json()
+        response_content = result["choices"][0]["message"]["content"]
         
         # Parse the response to get scores
-        scores = json.loads(response.content.strip())
+        scores = json.loads(response_content.strip())
         
         # Ensure we have the right number of scores
         if len(scores) != len(chunks):

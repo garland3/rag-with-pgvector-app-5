@@ -1,0 +1,21 @@
+Sample Document for Testing
+
+This is a sample document used for testing the RAG ingestion pipeline.
+
+The document contains multiple paragraphs to test text chunking functionality.
+Each paragraph should be properly processed and converted into embeddings.
+
+Key concepts covered:
+- Natural language processing
+- Information retrieval
+- Vector databases
+- Machine learning applications
+
+This document helps verify that the system can:
+1. Extract text from plain text files
+2. Split text into appropriate chunks
+3. Generate embeddings for each chunk
+4. Store the results in the database
+
+Testing is crucial for ensuring the reliability and accuracy of the RAG system.
+The ingestion pipeline must handle various document formats and sizes efficiently.

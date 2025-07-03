@@ -175,6 +175,103 @@ def get_project_dashboard_html(project: ProjectModel):
             .upload-area input[type="file"] {{
                 display: none;
             }}
+            .file-list {{
+                margin-top: 15px;
+                margin-bottom: 20px;
+            }}
+            .file-item {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px;
+                background: #e9ecef;
+                border-radius: 4px;
+                margin: 5px 0;
+            }}
+            .file-info {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            .file-icon {{
+                font-size: 18px;
+            }}
+            .file-name {{
+                font-weight: 500;
+                color: #2c3e50;
+            }}
+            .file-size {{
+                color: #6c757d;
+                font-size: 14px;
+            }}
+            .remove-file {{
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 4px 8px;
+                cursor: pointer;
+                font-size: 12px;
+            }}
+            .remove-file:hover {{
+                background: #c82333;
+            }}
+            .toast {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 5px;
+                color: white;
+                font-weight: 500;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+                min-width: 300px;
+            }}
+            .toast.show {{
+                transform: translateX(0);
+            }}
+            .toast-success {{
+                background-color: #28a745;
+            }}
+            .toast-error {{
+                background-color: #dc3545;
+            }}
+            .toast-info {{
+                background-color: #17a2b8;
+            }}
+            .progress-container {{
+                display: none;
+                margin-top: 20px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border-left: 4px solid #17a2b8;
+            }}
+            .progress-bar {{
+                width: 100%;
+                height: 20px;
+                background-color: #e9ecef;
+                border-radius: 10px;
+                overflow: hidden;
+                margin: 10px 0;
+            }}
+            .progress-fill {{
+                height: 100%;
+                background-color: #007bff;
+                transition: width 0.3s ease;
+            }}
+            .progress-text {{
+                text-align: center;
+                margin: 10px 0;
+                font-weight: 500;
+            }}
+            .progress-details {{
+                font-size: 14px;
+                color: #6c757d;
+                margin-top: 10px;
+            }}
             .chat-area {{
                 border: 1px solid #dee2e6;
                 border-radius: 8px;
@@ -231,8 +328,20 @@ def get_project_dashboard_html(project: ProjectModel):
                         <p>Supported formats: PDF, DOC, DOCX, TXT, MD</p>
                     </div>
                     
-                    <div id="fileList"></div>
-                    <button class="btn btn-primary" onclick="uploadFiles()">Upload Documents</button>
+                    <div id="fileList" class="file-list"></div>
+                    <button class="btn btn-primary" onclick="uploadFiles()" id="uploadButton" style="display: none;">Upload Documents</button>
+                    
+                    <div id="progressContainer" class="progress-container">
+                        <h4>Processing Documents...</h4>
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0% Complete</div>
+                        <div id="progressDetails" class="progress-details">
+                            Processed: <span id="processedCount">0</span> / <span id="totalCount">0</span> files
+                            <span id="failedCount" style="display: none;"> • Failed: <span>0</span></span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="card">
@@ -255,21 +364,43 @@ def get_project_dashboard_html(project: ProjectModel):
         </div>
         
         <script>
-            const projectId = {project.id};
+            const projectId = "{project.id}";
+            
+            let selectedFiles = [];
+            let currentJobId = null;
+            let pollInterval = null;
+            
+            // Toast notification system
+            function showToast(message, type = 'info') {{
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${{type}}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {{
+                    toast.classList.add('show');
+                }}, 100);
+                
+                setTimeout(() => {{
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }}, 4000);
+            }}
             
             function uploadFiles() {{
-                const fileInput = document.getElementById('fileInput');
-                const files = fileInput.files;
-                
-                if (files.length === 0) {{
-                    alert('Please select files to upload');
+                if (selectedFiles.length === 0) {{
+                    showToast('Please select files to upload', 'error');
                     return;
                 }}
                 
                 const formData = new FormData();
-                for (let i = 0; i < files.length; i++) {{
-                    formData.append('files', files[i]);
-                }}
+                selectedFiles.forEach(file => {{
+                    formData.append('files', file);
+                }});
+                
+                // Disable upload button and show progress
+                document.getElementById('uploadButton').disabled = true;
+                document.getElementById('uploadButton').textContent = 'Uploading...';
                 
                 fetch(`/documents/upload/${{projectId}}`, {{
                     method: 'POST',
@@ -277,13 +408,158 @@ def get_project_dashboard_html(project: ProjectModel):
                 }})
                 .then(response => response.json())
                 .then(data => {{
-                    alert('Files uploaded successfully!');
-                    fileInput.value = '';
-                    document.getElementById('fileList').innerHTML = '';
+                    if (data.job_id) {{
+                        currentJobId = data.job_id;
+                        showToast(`Upload started! Processing ${{data.total_files}} files...`, 'success');
+                        
+                        // Clear file selection
+                        selectedFiles = [];
+                        document.getElementById('fileInput').value = '';
+                        document.getElementById('fileList').innerHTML = '';
+                        document.getElementById('uploadButton').style.display = 'none';
+                        
+                        // Show progress and start polling
+                        showProgressUI(data.total_files);
+                        startPollingJobStatus(currentJobId);
+                    }} else {{
+                        throw new Error('No job ID received');
+                    }}
                 }})
                 .catch(error => {{
-                    alert('Error uploading files: ' + error);
+                    showToast('Upload failed: ' + error.message, 'error');
+                    resetUploadButton();
                 }});
+            }}
+            
+            function resetUploadButton() {{
+                document.getElementById('uploadButton').disabled = false;
+                document.getElementById('uploadButton').textContent = 'Upload Documents';
+            }}
+            
+            function showProgressUI(totalFiles) {{
+                const container = document.getElementById('progressContainer');
+                const totalCount = document.getElementById('totalCount');
+                
+                totalCount.textContent = totalFiles;
+                container.style.display = 'block';
+                
+                // Scroll to progress section
+                container.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+            }}
+            
+            function hideProgressUI() {{
+                document.getElementById('progressContainer').style.display = 'none';
+                resetUploadButton();
+            }}
+            
+            function updateProgressUI(status) {{
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                const processedCount = document.getElementById('processedCount');
+                const failedCountElement = document.getElementById('failedCount');
+                const failedCountSpan = failedCountElement.querySelector('span');
+                
+                const percentage = status.progress.percentage;
+                progressFill.style.width = percentage + '%';
+                progressText.textContent = percentage + '% Complete';
+                processedCount.textContent = status.progress.processed_files;
+                
+                if (status.progress.failed_files > 0) {{
+                    failedCountSpan.textContent = status.progress.failed_files;
+                    failedCountElement.style.display = 'inline';
+                }} else {{
+                    failedCountElement.style.display = 'none';
+                }}
+            }}
+            
+            function startPollingJobStatus(jobId) {{
+                pollInterval = setInterval(async () => {{
+                    try {{
+                        const response = await fetch(`/jobs/${{jobId}}/status`);
+                        const status = await response.json();
+                        
+                        updateProgressUI(status);
+                        
+                        if (status.status === 'completed') {{
+                            clearInterval(pollInterval);
+                            const successCount = status.progress.processed_files - status.progress.failed_files;
+                            let message = `Processing complete! ${{successCount}} files processed successfully.`;
+                            
+                            if (status.progress.failed_files > 0) {{
+                                message += ` ${{status.progress.failed_files}} files failed.`;
+                                showToast(message, 'info');
+                            }} else {{
+                                showToast(message, 'success');
+                            }}
+                            
+                            setTimeout(() => {{
+                                hideProgressUI();
+                            }}, 3000);
+                            
+                        }} else if (status.status === 'failed') {{
+                            clearInterval(pollInterval);
+                            showToast('Processing failed: ' + (status.error_message || 'Unknown error'), 'error');
+                            hideProgressUI();
+                        }}
+                    }} catch (error) {{
+                        clearInterval(pollInterval);
+                        showToast('Error checking status: ' + error.message, 'error');
+                        hideProgressUI();
+                    }}
+                }}, 2000); // Poll every 2 seconds
+            }}
+            
+            function removeFile(index) {{
+                selectedFiles.splice(index, 1);
+                updateFileList();
+            }}
+            
+            function getFileIcon(filename) {{
+                const extension = filename.split('.').pop().toLowerCase();
+                switch(extension) {{
+                    case 'pdf': return '📄';
+                    case 'doc':
+                    case 'docx': return '📝';
+                    case 'txt': return '📰';
+                    case 'md': return '📋';
+                    default: return '📄';
+                }}
+            }}
+            
+            function formatFileSize(bytes) {{
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }}
+            
+            function updateFileList() {{
+                const fileList = document.getElementById('fileList');
+                const uploadButton = document.getElementById('uploadButton');
+                
+                if (selectedFiles.length === 0) {{
+                    fileList.innerHTML = '';
+                    uploadButton.style.display = 'none';
+                    return;
+                }}
+                
+                fileList.innerHTML = selectedFiles.map((file, index) => {{
+                    return `
+                        <div class="file-item">
+                            <div class="file-info">
+                                <span class="file-icon">${{getFileIcon(file.name)}}</span>
+                                <div>
+                                    <div class="file-name">${{file.name}}</div>
+                                    <div class="file-size">${{formatFileSize(file.size)}}</div>
+                                </div>
+                            </div>
+                            <button class="remove-file" onclick="removeFile(${{index}})">Remove</button>
+                        </div>
+                    `;
+                }}).join('');
+                
+                uploadButton.style.display = 'block';
             }}
             
             function sendMessage() {{
@@ -316,12 +592,8 @@ def get_project_dashboard_html(project: ProjectModel):
             
             // Handle file selection display
             document.getElementById('fileInput').addEventListener('change', function(e) {{
-                const fileList = document.getElementById('fileList');
-                const files = Array.from(e.target.files);
-                
-                fileList.innerHTML = files.map(file => 
-                    `<div style="padding: 5px; background: #e9ecef; margin: 5px 0; border-radius: 3px;">${{file.name}}</div>`
-                ).join('');
+                selectedFiles = Array.from(e.target.files);
+                updateFileList();
             }});
             
             // Handle enter key in chat input

@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
-from routes import auth_router, api_router, user_router, project_router, document_router, search_router, chat_router
+from routes import auth_router, api_router, user_router, project_router, document_router, search_router, chat_router, jobs_router, documents_upload_router
 from auth import get_current_user_optional
 from config import settings
 from database import Base, engine, SessionLocal
 # Import models to register them with Base
-from models.project import Project  
+from models.project import Project
+from models.ingestion_job import IngestionJob  
 from utils.logging import setup_logging, get_logger, log_api_request, log_error
 import time
 
@@ -78,6 +79,8 @@ app.include_router(project_router)
 app.include_router(document_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+app.include_router(jobs_router)
+app.include_router(documents_upload_router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -120,7 +123,7 @@ async def health_check():
     config_status = {
         "oauth_configured": bool(settings.oauth_client_id and settings.oauth_client_secret and settings.oauth_domain),
         "jwt_configured": bool(settings.jwt_secret_key),
-        "gemini_configured": bool(settings.gemini_api_key),
+        "openai_configured": bool(settings.openai_api_key),
         "database_configured": bool(settings.database_url),
     }
     
@@ -137,7 +140,7 @@ async def health_check():
     all_configured = all([
         config_status["oauth_configured"],
         config_status["jwt_configured"], 
-        config_status["gemini_configured"],
+        config_status["openai_configured"],
         config_status["database_connected"]
     ])
     

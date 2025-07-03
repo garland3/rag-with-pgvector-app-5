@@ -29,8 +29,11 @@ class Settings(BaseSettings):
     # Database URL
     database_url: str = "postgresql://postgres:password@localhost:5432/your_app_db"
     
-    # Gemini API Key
-    gemini_api_key: Optional[str] = None
+    # OpenAI Configuration
+    openai_api_key: Optional[str] = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    embedding_model: str = "text-embedding-ada-002"
+    chat_model: str = "gpt-3.5-turbo"
     
     class Config:
         env_file = ".env"
