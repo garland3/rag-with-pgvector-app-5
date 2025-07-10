@@ -1,32 +1,79 @@
-# FastAPI OAuth Application
+# RAG Application with pgvector
 
-A simple, generic FastAPI application with OAuth 2.0 authentication that can work with any OAuth provider (Auth0, Google, GitHub, etc.).
+A multi-tenant RAG (Retrieval-Augmented Generation) application built with FastAPI that allows users to create knowledge bases from their documents and chat with them using natural language queries. Features OAuth 2.0 authentication, vector embeddings with pgvector, and intelligent document retrieval.
 
 ## Features
 
-- 🔐 Generic OAuth 2.0 implementation
-- 🎯 Works with any OAuth provider (Auth0, Google, GitHub, etc.)
-- 🔑 JWT token management
-- 🛡️ Protected routes with authentication
-- 📝 Simple HTML interface
-- 🚀 FastAPI with automatic API documentation
-- 🐳 Docker support included
+- 🔐 OAuth 2.0 authentication (Auth0, Google, GitHub)
+- 🏢 Multi-tenant project-based knowledge bases
+- � Document processing (PDF, DOCX, TXT, MD)
+- 🧠 Vector embeddings with Google Gemini
+- 🔍 Semantic search with pgvector
+- � Chat interface with RAG pipeline
+- 🔄 LLM-based reranking for improved results
+- �️ PostgreSQL with pgvector extension
+- 🧪 Comprehensive test suite
 
 ## Project Structure
 
 ```
 ├── auth/                   # Authentication module
-│   ├── __init__.py
-│   ├── dependencies.py     # FastAPI dependencies for auth
+│   ├── dependencies.py     # FastAPI auth dependencies
 │   ├── oauth_client.py     # Generic OAuth client
 │   └── token_manager.py    # JWT token handling
-├── routes/                 # API routes
-│   ├── __init__.py
-│   ├── api.py             # General API routes
-│   └── auth.py            # Authentication routes
+├── models/                 # SQLAlchemy models
+│   ├── user.py            # User model
+│   ├── project.py         # Project model
+│   ├── document.py        # Document model
+│   ├── chunk.py           # Text chunk with embeddings
+│   └── ingestion_job.py   # Background job tracking
+├── crud/                  # Business logic managers
+│   ├── user_manager.py    # User operations
+│   ├── project_manager.py # Project operations
+│   ├── document_manager.py # Document operations
+│   ├── chat_manager.py    # Chat operations
+│   ├── search_manager.py  # Search operations
+│   └── ingestion_manager.py # Document ingestion
+├── routes/                # API routes
+│   ├── auth.py            # Authentication endpoints
+│   ├── project.py         # Project management
+│   ├── document.py        # Document upload/management
+│   ├── documents_upload.py # Document upload endpoints
+│   ├── chat.py            # RAG chat interface
+│   ├── search.py          # Search endpoints
+│   ├── jobs.py            # Background job tracking
+│   └── user.py            # User management
+├── rag/                   # RAG pipeline
+│   ├── document_processors.py  # PDF, DOCX, TXT processing
+│   ├── processing.py      # Text chunking and embeddings
+│   └── reranking.py       # LLM-based result reranking
+├── migrations/            # Alembic database migrations
+├── tests/                 # Comprehensive test suite
+│   ├── test_auth.py       # Authentication tests
+│   ├── test_projects.py   # Project management tests
+│   ├── test_complete_pipeline.py  # End-to-end tests
+│   ├── test_document_management.py # Document tests
+│   ├── test_chat.py       # Chat functionality tests
+│   ├── test_ingestion_pipeline.py # Ingestion tests
+│   ├── test_uploaded_docs.py      # Document processing tests
+│   └── test_docs/         # Sample test documents
+├── scripts/               # Utility scripts
+│   ├── run-tests.sh       # Test runner script
+│   ├── run.sh             # Application runner
+│   └── setup.sh           # Setup script
+├── docs/                  # Documentation
+│   ├── planning/          # Architecture and planning docs
+│   ├── ingestion-plan.md  # Document ingestion pipeline plan
+│   └── CLAUDE.md          # Development guide
+├── utils/                 # Utilities
+│   └── logging.py         # Logging configuration
 ├── config.py              # Application configuration
 ├── main.py                # FastAPI application
+├── database.py            # Database connection
+├── schemas.py             # Pydantic schemas
 ├── requirements.txt       # Python dependencies
+├── requirements-test.txt  # Test dependencies
+├── alembic.ini            # Database migration config
 ├── .env.example          # Environment variables template
 └── docker-compose.yml    # PostgreSQL database
 ```
@@ -47,7 +94,7 @@ Copy the example environment file and configure your OAuth provider:
 cp .env.example .env
 ```
 
-Edit `.env` with your OAuth provider settings:
+Edit `.env` with your configuration:
 
 ```env
 # OAuth Configuration
@@ -60,34 +107,41 @@ OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback
 JWT_SECRET_KEY=your_super_secret_jwt_key_change_this_in_production
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Database Configuration
+DATABASE_URL=postgresql://postgres:password@localhost:5432/your_app_db
+
+# Google AI Configuration (for embeddings and chat)
+GOOGLE_API_KEY=your_google_api_key
+
+# OpenAI Configuration (for reranking - optional)
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1
 ```
 
-### 3. Provider-Specific Configuration
+### 3. Database Setup
 
-#### For Auth0:
-```env
-OAUTH_DOMAIN=your-tenant.auth0.com
-OAUTH_CLIENT_ID=your_auth0_client_id
-OAUTH_CLIENT_SECRET=your_auth0_client_secret
+Start PostgreSQL with pgvector extension:
+
+```bash
+docker-compose up -d
 ```
 
-#### For Google:
-```env
-OAUTH_DOMAIN=accounts.google.com
-OAUTH_AUTHORIZE_URL=https://accounts.google.com/o/oauth2/v2/auth
-OAUTH_TOKEN_URL=https://oauth2.googleapis.com/token
-OAUTH_USERINFO_URL=https://www.googleapis.com/oauth2/v2/userinfo
-```
+Run database migrations:
 
-#### For GitHub:
-```env
-OAUTH_DOMAIN=github.com
-OAUTH_AUTHORIZE_URL=https://github.com/login/oauth/authorize
-OAUTH_TOKEN_URL=https://github.com/login/oauth/access_token
-OAUTH_USERINFO_URL=https://api.github.com/user
+```bash
+alembic upgrade head
 ```
 
 ### 4. Run the Application
+
+Using the provided script (recommended):
+
+```bash
+./scripts/run.sh
+```
+
+Or manually:
 
 ```bash
 python main.py
@@ -98,6 +152,51 @@ Or using uvicorn directly:
 ```bash
 uvicorn main:app --reload --host localhost --port 8000
 ```
+
+## Architecture Overview
+
+### RAG Pipeline
+
+1. **Document Upload** → Text extraction → Chunking (1000 chars, 200 overlap)
+2. **Embedding Generation** → Google Gemini embedding-001 model (1536 dimensions)
+3. **Vector Storage** → PostgreSQL with pgvector for similarity search
+4. **Query Processing** → Semantic search → LLM reranking → Context retrieval → Response generation
+
+### Key Components
+
+- **Multi-tenancy**: Project-based isolation with owner access control
+- **Document Processing**: Support for PDF, DOCX, TXT, and Markdown files
+- **Vector Search**: pgvector-powered semantic similarity search
+- **Reranking**: LLM-based relevance scoring for improved results
+- **Background Jobs**: Asynchronous document processing with progress tracking
+
+## API Endpoints
+
+### Authentication
+- `GET /auth/login` - Get OAuth login URL
+- `GET /auth/callback` - OAuth callback handler
+- `GET /auth/me` - Get current user info
+
+### Projects
+- `GET /projects` - List user's projects
+- `POST /projects` - Create new project
+- `GET /projects/{id}` - Get project details
+- `GET /projects/{id}/dashboard` - Project dashboard UI
+
+### Documents
+- `POST /documents/upload/{project_id}` - Upload documents
+- `GET /documents/project/{project_id}` - List project documents
+- `DELETE /documents/{document_id}` - Delete document
+
+### Chat
+- `POST /chat/{project_id}` - RAG chat with project knowledge base
+
+### Jobs
+- `GET /jobs` - List ingestion jobs
+- `GET /jobs/{job_id}` - Get job status
+
+### Search
+- `POST /search/{project_id}` - Semantic search in project
 
 ## Usage
 
@@ -116,27 +215,28 @@ uvicorn main:app --reload --host localhost --port 8000
    Authorization: Bearer <your_jwt_token>
    ```
 
-### 2. API Endpoints
-
-- `GET /` - Home page with HTML interface
-- `GET /auth/login` - Get OAuth login URL
-- `GET /auth/callback` - OAuth callback handler
-- `GET /auth/me` - Get current user info (protected)
-- `GET /api/protected` - Example protected route
-- `GET /api/profile` - User profile endpoint
-- `GET /docs` - Swagger UI documentation
-- `GET /redoc` - ReDoc documentation
-
-### 3. Example Usage with curl
+### 2. Creating a Knowledge Base
 
 ```bash
-# 1. Get login URL
+# 1. Authenticate and get token
 curl http://localhost:8000/auth/login
 
-# 2. Visit the returned auth_url in browser to complete OAuth
+# 2. Create a project
+curl -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "My Knowledge Base", "description": "AI Research Documents"}' \
+     http://localhost:8000/projects
 
-# 3. Use the returned token for protected endpoints
-curl -H "Authorization: Bearer <your_token>" http://localhost:8000/api/protected
+# 3. Upload documents
+curl -H "Authorization: Bearer <token>" \
+     -F "files=@document.pdf" \
+     http://localhost:8000/documents/upload/{project_id}
+
+# 4. Chat with your documents
+curl -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"message": "What are the key findings about AI?"}' \
+     http://localhost:8000/chat/{project_id}
 ```
 
 ## Configuration Options
@@ -279,11 +379,56 @@ Security scanning runs automatically in the CI/CD pipeline as part of the `secur
 
 ## Development
 
-The application uses:
-- **FastAPI**: Modern, fast web framework
-- **python-jose**: JWT handling
-- **httpx**: Async HTTP client for OAuth requests
-- **pydantic-settings**: Configuration management
+### Key Technologies
+
+- **FastAPI**: Modern Python web framework
+- **SQLAlchemy**: Database ORM with PostgreSQL
+- **pgvector**: Vector similarity search
+- **Google Gemini**: Embeddings and chat completions
+- **LangChain**: RAG pipeline components
+- **Alembic**: Database migrations
+- **pytest**: Testing framework
+
+### Development Commands
+
+```bash
+# Run with auto-reload
+./scripts/run.sh
+
+# Create database migration
+alembic revision --autogenerate -m "Description"
+
+# Apply migrations
+alembic upgrade head
+
+# Run security scan
+bandit -c .bandit -r .
+```
+
+## Current Limitations & Roadmap
+
+### ✅ Implemented
+- Basic OAuth authentication with JWT
+- Multi-tenant project management
+- Document upload and processing (PDF, DOCX, TXT, MD)
+- Vector embeddings with semantic search
+- RAG chat interface with reranking
+- Comprehensive test suite
+
+### 🔄 In Progress
+- Asynchronous document processing pipeline
+- Enhanced progress tracking for uploads
+- Improved error handling and recovery
+
+### 📋 Planned
+- Modern React/Vue.js frontend
+- Advanced access control (roles, groups)
+- Analytics dashboard
+- Real-time chat with WebSockets
+- Enhanced document management UI
+- Background job queue system
+
+See `docs/planning/plan.md` for detailed roadmap and `docs/ingestion-plan.md` for the document ingestion pipeline plan.
 
 ## Troubleshooting
 
