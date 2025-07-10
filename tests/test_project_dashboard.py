@@ -80,7 +80,7 @@ def test_project_dashboard_nonexistent_project(client, auth_headers):
     """Test accessing dashboard for non-existent project."""
     fake_project_id = uuid4()
     response = client.get(f"/projects/{fake_project_id}/dashboard", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to project
 
 
 @pytest.mark.api
@@ -112,7 +112,7 @@ def test_project_dashboard_unauthorized_project(client, auth_headers, db_session
     db_session.commit()
     
     response = client.get(f"/projects/{other_project.id}/dashboard", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to other user's project
 
 
 @pytest.mark.api

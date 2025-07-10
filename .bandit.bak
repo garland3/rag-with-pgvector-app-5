@@ -1,0 +1,2 @@
+skips: ['B101']
+exclude_dirs: ['/migrations/', '/venv/', '/.venv/', '/node_modules/', '/.git/', '/__pycache__/']

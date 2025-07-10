@@ -5,6 +5,7 @@ Simple pipeline test with better error handling and cleanup.
 
 import os
 import sys
+import pytest
 from unittest.mock import patch, MagicMock
 
 # Add the project root to Python path
@@ -122,7 +123,16 @@ def test_document_processing():
                 "error": str(e)
             })
     
-    return results
+    # Assert that we successfully processed at least some files
+    successful_results = [r for r in results if r.get("success")]
+    assert len(successful_results) > 0, "No files were successfully processed"
+    
+    # Verify each successful result has expected fields
+    for result in successful_results:
+        assert "text_length" in result, f"Missing text_length for {result['filename']}"
+        assert "chunk_count" in result, f"Missing chunk_count for {result['filename']}"
+        assert "file_type" in result, f"Missing file_type for {result['filename']}"
+        assert result["text_length"] > 0, f"No text extracted from {result['filename']}"
 
 
 @patch('rag.processing.requests.post')
@@ -160,15 +170,15 @@ def test_embedding_mock(mock_post):
         
         # Verify embedding structure
         for i, emb in enumerate(embeddings):
-            if len(emb) != 1536:
-                print(f"❌ Invalid embedding dimension for text {i}: {len(emb)}")
-                return False
+            assert len(emb) == 1536, f"Invalid embedding dimension for text {i}: {len(emb)}"
         
-        return True
+        # Test passed - all assertions successful
+        assert len(embeddings) == len(test_texts)
+        assert all(len(emb) == 1536 for emb in embeddings)
         
     except Exception as e:
         print(f"❌ Embedding generation failed: {e}")
-        return False
+        pytest.fail(f"Embedding generation failed: {e}")
 
 
 def test_database_operations():
@@ -218,12 +228,15 @@ def test_database_operations():
         assert job.status == "pending"
         print("✅ Job data verified")
         
-        return user, project, job
+        # Test completed successfully
+        assert user.id is not None
+        assert project.id is not None
+        assert job.id is not None
         
     except Exception as e:
         print(f"❌ Database operations failed: {e}")
         db.rollback()
-        return None, None, None
+        pytest.fail(f"Database operations failed: {e}")
     finally:
         db.close()
 

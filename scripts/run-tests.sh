@@ -15,6 +15,10 @@ echo "🗄️ Setting up test database..."
 # Set PYTHONPATH for imports
 export PYTHONPATH=.
 
+# Set testing environment variables
+export TESTING=true
+export BYPASS_AUTH=true
+
 # Run tests with different options based on arguments
 if [ "$1" = "unit" ]; then
     echo "🔬 Running unit tests only..."

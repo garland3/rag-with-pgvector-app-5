@@ -5,7 +5,7 @@ import uuid
 
 
 def create_project(db: Session, project: ProjectCreate, owner_id: str):
-    db_project = Project(**project.dict(), owner_id=owner_id)
+    db_project = Project(**project.model_dump(), owner_id=owner_id)
     db.add(db_project)
     db.commit()
     db.refresh(db_project)

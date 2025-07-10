@@ -5,6 +5,7 @@ from auth.token_manager import token_manager
 from crud.user_manager import get_user_by_auth0_id
 from database import get_db
 from models.user import User
+from config import settings
 
 def get_current_user(
     request: Request,
@@ -13,6 +14,19 @@ def get_current_user(
     """
     Dependency to get the current authenticated user from the database.
     """
+    # Check if auth bypass is enabled for testing
+    if settings.bypass_auth:
+        # Return a mock test user for testing
+        from datetime import datetime
+        return User(
+            id="test-user-123",
+            auth0_id="test-user-123",
+            email="test@example.com",
+            name="Test User",
+            picture="https://example.com/avatar.jpg",
+            created_at=datetime.utcnow()
+        )
+    
     # Try to get token from cookie first, then from Authorization header
     token = request.cookies.get("access_token")
     if not token:
@@ -53,6 +67,19 @@ def get_current_user_optional(
     Optional dependency to get the current user if authenticated.
     Returns None if not authenticated.
     """
+    # Check if auth bypass is enabled for testing
+    if settings.bypass_auth:
+        # Return a mock test user for testing
+        from datetime import datetime
+        return User(
+            id="test-user-123",
+            auth0_id="test-user-123",
+            email="test@example.com",
+            name="Test User",
+            picture="https://example.com/avatar.jpg",
+            created_at=datetime.utcnow()
+        )
+    
     # Try to get token from cookie first, then from Authorization header
     token = request.cookies.get("access_token")
     if not token:

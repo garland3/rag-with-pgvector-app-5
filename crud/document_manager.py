@@ -5,7 +5,7 @@ import uuid
 
 
 def create_document(db: Session, document: DocumentCreate, project_id: uuid.UUID, content: bytes):
-    db_document = Document(**document.dict(), project_id=project_id, content=content)
+    db_document = Document(**document.model_dump(), project_id=project_id, content=content)
     db.add(db_document)
     db.commit()
     db.refresh(db_document)

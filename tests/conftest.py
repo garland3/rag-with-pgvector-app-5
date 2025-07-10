@@ -46,7 +46,7 @@ def db_session():
 
 
 @pytest.fixture
-def client(db_session):
+def client(db_session, bypass_auth_user):
     """Create test client with database session override."""
     def override_get_db():
         yield db_session
@@ -118,3 +118,29 @@ def mock_oauth_settings():
         mock_settings.jwt_secret_key = "test-secret-key"  # nosec B105
         mock_settings.gemini_api_key = "test-gemini-key"
         yield mock_settings
+
+
+@pytest.fixture
+def bypass_auth_user(db_session):
+    """Create the test user in database when bypass auth is enabled."""
+    from config import settings
+    if settings.bypass_auth:
+        from models.user import User
+        from datetime import datetime
+        
+        # Check if user already exists
+        existing_user = db_session.query(User).filter(User.auth0_id == "test-user-123").first()
+        if not existing_user:
+            user = User(
+                auth0_id="test-user-123",
+                email="test@example.com",
+                name="Test User",
+                picture="https://example.com/avatar.jpg",
+                created_at=datetime.utcnow()
+            )
+            db_session.add(user)
+            db_session.commit()
+            db_session.refresh(user)
+            return user
+        return existing_user
+    return None

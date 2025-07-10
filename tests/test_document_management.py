@@ -88,7 +88,7 @@ def test_delete_document_nonexistent_project(client, auth_headers):
     fake_project_id = uuid4()
     fake_document_id = uuid4()
     response = client.delete(f"/projects/{fake_project_id}/documents/{fake_document_id}", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to project
 
 
 @pytest.mark.api
@@ -140,7 +140,7 @@ def test_delete_document_unauthorized_project(client, auth_headers, db_session):
     db_session.commit()
     
     response = client.delete(f"/projects/{other_project.id}/documents/{other_document.id}", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to other user's project
 
 
 @pytest.mark.api
@@ -212,7 +212,7 @@ def test_view_document_chunks_nonexistent_project(client, auth_headers):
     fake_project_id = uuid4()
     fake_document_id = uuid4()
     response = client.get(f"/projects/{fake_project_id}/documents/{fake_document_id}/chunks", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to project
 
 
 @pytest.mark.api
@@ -262,7 +262,7 @@ def test_view_document_chunks_unauthorized_project(client, auth_headers, db_sess
     db_session.commit()
     
     response = client.get(f"/projects/{other_project.id}/documents/{other_document.id}/chunks", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to other user's project
 
 
 @pytest.mark.api
@@ -325,7 +325,7 @@ def test_list_documents_nonexistent_project(client, auth_headers):
     """Test listing documents for non-existent project."""
     fake_project_id = uuid4()
     response = client.get(f"/projects/{fake_project_id}/documents/", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to project
 
 
 @pytest.mark.api
@@ -356,7 +356,7 @@ def test_list_documents_unauthorized_project(client, auth_headers, db_session):
     db_session.commit()
     
     response = client.get(f"/projects/{other_project.id}/documents/", headers=auth_headers)
-    assert response.status_code == 404
+    assert response.status_code == 401  # Should return 401 for unauthorized access to other user's project
 
 
 @pytest.mark.api

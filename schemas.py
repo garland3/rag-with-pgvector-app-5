@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 from datetime import datetime
 
@@ -22,7 +22,7 @@ class User(UserBase):
         from_attributes = True
 
 class ProjectBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1)  # Required and non-empty
     description: str | None = None
 
 class ProjectCreate(ProjectBase):

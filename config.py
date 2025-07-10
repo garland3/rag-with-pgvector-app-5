@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-ada-002"
     chat_model: str = "gpt-3.5-turbo"
     
+    # Testing Configuration
+    testing: bool = False
+    bypass_auth: bool = False
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

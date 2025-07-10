@@ -122,7 +122,7 @@ def test_chat_empty_project(client, auth_headers, sample_project):
     """Test chat with project that has no documents."""
     chat_data = {"text": "What is this document about?"}
     
-    with patch("crud.chat_manager.get_chat_response") as mock_chat:
+    with patch("routes.chat.get_chat_response") as mock_chat:
         mock_chat.return_value = {
             "response": "I couldn't find any relevant information to answer your question.",
             "sources": []
@@ -146,7 +146,7 @@ def test_chat_with_documents(client, auth_headers, sample_document_with_chunks):
     
     chat_data = {"text": "What is this document about?"}
     
-    with patch("crud.chat_manager.get_chat_response") as mock_chat:
+    with patch("routes.chat.get_chat_response") as mock_chat:
         mock_chat.return_value = {
             "response": "Based on the provided sources, this document is about artificial intelligence. [Source 1] mentions test content for chat testing.",
             "sources": [
@@ -192,8 +192,11 @@ def test_chat_invalid_message_format(client, auth_headers, sample_project):
 def test_chat_empty_message(client, auth_headers, sample_project):
     """Test chat with empty message."""
     chat_data = {"text": ""}
-    with patch("rag.processing.get_embeddings") as mock_embeddings:
-        mock_embeddings.return_value = [[0.1] * 1536]  # Mock embedding for empty text
+    with patch("routes.chat.get_chat_response") as mock_chat:
+        mock_chat.return_value = {
+            "response": "I couldn't find any relevant information to answer your question.",
+            "sources": []
+        }
         response = client.post(f"/projects/{sample_project.id}/chat/", json=chat_data, headers=auth_headers)
         assert response.status_code == 200  # Should return 200 with "no relevant information" message
         data = response.json()
@@ -256,7 +259,7 @@ def test_chat_message_validation(client, auth_headers, sample_project):
     ]
     
     for test_data, expected_status in test_cases:
-        with patch("crud.chat_manager.get_chat_response") as mock_chat:
+        with patch("routes.chat.get_chat_response") as mock_chat:
             mock_chat.return_value = {"response": "Test response", "sources": []}
             
             response = client.post(f"/projects/{sample_project.id}/chat/", json=test_data, headers=auth_headers)
@@ -264,7 +267,7 @@ def test_chat_message_validation(client, auth_headers, sample_project):
 
 
 @pytest.mark.api  
-@patch("crud.chat_manager.get_chat_response")
+@patch("routes.chat.get_chat_response")
 def test_chat_error_handling(mock_chat, client, auth_headers, sample_project):
     """Test chat error handling when chat_manager raises exception."""
     mock_chat.side_effect = Exception("Chat service error")

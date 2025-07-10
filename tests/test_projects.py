@@ -97,15 +97,15 @@ def test_create_project_validation_missing_name(client, auth_headers):
 
 @pytest.mark.api
 def test_create_project_validation_missing_description(client, auth_headers):
-    """Test creating project with missing description."""
-    invalid_data = {"name": "Missing description"}
-    response = client.post("/projects/", json=invalid_data, headers=auth_headers)
-    assert response.status_code == 422  # Validation error
+    """Test creating project with missing description (should succeed since description is optional)."""
+    valid_data = {"name": "Missing description"}
+    response = client.post("/projects/", json=valid_data, headers=auth_headers)
+    assert response.status_code == 201  # Should succeed since description is optional
 
 
 @pytest.mark.api
 def test_create_project_validation_empty_strings(client, auth_headers):
-    """Test creating project with empty strings."""
-    invalid_data = {"name": "", "description": ""}
+    """Test creating project with empty name (should fail validation)."""
+    invalid_data = {"name": "", "description": "Valid description"}
     response = client.post("/projects/", json=invalid_data, headers=auth_headers)
-    assert response.status_code == 422  # Validation error
+    assert response.status_code == 422  # Validation error for empty name
